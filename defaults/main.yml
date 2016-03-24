@@ -1,0 +1,8 @@
+---
+# defaults file for ansible-java-keystore
+java_keystore_jre_path: ""
+java_keystore_file_path: ""
+java_keystore_file_password: ""
+java_keystore_certificates: []
+#- alias: 'xyz.example.org'
+#  certificate_file: ""

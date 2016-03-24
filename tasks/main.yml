@@ -1,0 +1,60 @@
+---
+# tasks file for ansible-java-keystore
+# The keytool command requires that certificate files are available locally on
+# the target system so we need a place to store those.
+- name: Create directory for Java certificates
+  file:
+    state: directory
+    path: "{{ java_keystore_certificate_directory }}"
+    owner: root
+    group: root
+    mode: 0755
+  tags:
+  - java-keystore
+
+- name: Copy certificate files
+  with_items: java_keystore_certificates
+  copy:
+    src: "{{ item.certificate_file }}"
+    dest: "{{ java_keystore_certificate_directory }}/{{ item.certificate_file | basename }}"
+    owner: root
+    group: root
+    mode: 0755
+  tags:
+  - java-keystore
+
+# Warning: The following two tasks should not be confused with black magic.
+# First, the keystore tool is executed with the -list argument. When the
+# certificate is not available, it returns a non-zero error code.
+# Errors are ignored but collected in the certificate_status variable.
+- name: Determine which certificates already exist
+  with_items: java_keystore_certificates
+  command: >
+    {{ java_keystore_jre_path }}/bin/keytool
+    -keystore {{ java_keystore_file_path }}
+    -storepass {{ java_keystore_file_password }}
+    -alias {{ item.alias }}
+    -list
+  register: certificate_status
+  ignore_errors: true
+  changed_when: false
+  tags:
+  - java-keystore
+
+# Now, we loop over the results of the previous check command. For each command
+# executions that was not-successful, the keystore tool is executed again but
+# this time with -importcert to add all non-existing certificate files.
+- name: Add all certificates that are not already in the keystore
+  with_items: certificate_status.results
+  command: >
+    {{ java_keystore_jre_path }}/bin/keytool
+    -keystore {{ java_keystore_file_path }}
+    -storepass {{ java_keystore_file_password }}
+    -alias {{ item.item.alias }}
+    -importcert
+    -noprompt
+    -trustcacerts
+    -file {{ java_keystore_certificate_directory }}/{{ item.item.certificate_file | basename }}
+  when: item.rc != 0
+  tags:
+  - java-keystore
