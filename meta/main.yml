@@ -2,7 +2,6 @@
 galaxy_info:
   author: Mario Steinhoff
   description: Manages certificates in a Java keystore file.
-  company: catapullt GmbH & Co. KG
   license: MPLv2
   min_ansible_version: 20
   platforms:
